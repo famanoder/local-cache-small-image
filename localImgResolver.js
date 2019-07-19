@@ -6,19 +6,37 @@ const AFTER_7_DAYS = 7 * 24 * 60 * 60 * 1000;
 const KEY_PREFIX = 'local_cached_img_key_';
 
 const localImgStore = {
+  expireTime: AFTER_7_DAYS, 
   keyPrefix: KEY_PREFIX,
   length: 0,
   getKey(id) {
     return this.keyPrefix + id;
   },
+  isOurKey(k) {
+    return localStorage.hasOwnProperty(k) && k.startsWith(this.keyPrefix);
+  },
   getStoredLength() {
     let num = 0;
     for(let k in localStorage) {
-      if(localStorage.hasOwnProperty(k) && k.startsWith(this.keyPrefix)) {
+      if(this.isOurKey(k)) {
         num += 1;
       }
     }
     return num;
+  },
+  removeExpired() {
+    for(let k in localStorage) {
+      if(this.isOurKey(k)) {
+        let item = {};
+        try{
+          item = JSON.parse(localStorage[k]);
+        }catch(e) {}
+        if(Date.now() - (item.t ||  0) >= this.expireTime) {
+          localStorage.removeItem(k);
+          console.warn(`will remove expired item '${k}'`);
+        }
+      }
+    }
   },
   findOne(id) {
     return localStorage.getItem(this.getKey(id));
@@ -29,6 +47,7 @@ const localImgStore = {
   },
   _saveOne(id, src, base64) {
     localStorage.setItem(this.getKey(id), JSON.stringify({
+      t: Date.now(),
       src,
       base64
     }));
@@ -97,13 +116,15 @@ function supportWebp() {
   return hasWebp;
 }
 
+localImgStore.removeExpired();
+
 export default class LocalImgResolver {
   constructor({
     maxSize,
     maxNum,
     expireTime,
     keyPrefix
-  }) {
+  } = {}) {
     this.maxSize = maxSize || MAX_IMG_SIZE;
     this.maxNum = maxNum || MAX_SAVED_NUM;
     this.expireTime = expireTime || AFTER_7_DAYS;
@@ -111,6 +132,7 @@ export default class LocalImgResolver {
     this.matched = Object.create(null);
 
     localImgStore.keyPrefix = this.keyPrefix;
+    localImgStore.expireTime = this.expireTime;
   }
   match(id, src) {
     if(this.matched[id]) {
@@ -159,4 +181,3 @@ export default class LocalImgResolver {
     }
   }
 };
-
