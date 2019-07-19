@@ -1,15 +1,15 @@
 {
   "name": "local-cache-small-image",
-  "version": "1.0.1",
-  "description": "> a way to manage browser local caches for small images.",
+  "version": "1.0.2",
+  "description": "a way to manage browser local caches for small images.",
   "main": "index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/famanoder/local-cache-small-image.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["cache image", "local image"],
+  "author": "famanoder",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/famanoder/local-cache-small-image/issues"
   },
