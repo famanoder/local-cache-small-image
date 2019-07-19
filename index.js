@@ -66,11 +66,11 @@ const localImgStore = {
               base64
             });
           }else{
-            rs(null);
+            rs({});
           }
         });
       }else{
-        rs(null);
+        rs({});
       }
     });
   }
