@@ -3,15 +3,19 @@
 const MAX_IMG_SIZE = 15 * 1024; // 15k
 const MAX_SAVED_NUM = 30;
 const AFTER_7_DAYS = 7 * 24 * 60 * 60 * 1000;
-const KEY_PREFIX = 'local_cached_img_key_';
+const KEY_PREFIX = 'local_cached_img_key';
+const EXPIRE_KEY = 'expire';
 const _localStorage = window.localStorage; // eslint-disable-line
 
 const localImgStore = {
   expireTime: AFTER_7_DAYS, 
   keyPrefix: KEY_PREFIX,
   length: 0,
-  getKey(id) {
-    return this.keyPrefix + id;
+  getMainKey(id) {
+    return `${this.keyPrefix}_${id}$`;
+  },
+  getExpireKey(id) {
+    return `${this.getMainKey(id)}${EXPIRE_KEY}`;
   },
   isOurKey(k) {
     return _localStorage.hasOwnProperty(k) && k.startsWith(this.keyPrefix);
@@ -23,37 +27,34 @@ const localImgStore = {
         num += 1;
       }
     }
-    return num;
+    return num / 2;
   },
   removeExpired() {
     for (const k in _localStorage) {
-      if (this.isOurKey(k)) {
-        let item = {};
-        try {
-          item = JSON.parse(_localStorage[k]);
-        } catch (e) {
-          console.error(e);
-        }
-        if (Date.now() - (item.t ||  0) >= this.expireTime) {
+      if (this.isOurKey(k) && k.endsWith(EXPIRE_KEY)) {
+        const expire = _localStorage[k];
+        if (Date.now() - (expire ||  0) >= this.expireTime) {
+          const key = k.replace(/\w+$/, '');
           _localStorage.removeItem(k);
-          console.warn(`will remove expired item '${k}'`);
+          _localStorage.removeItem(key);
+          console.warn(`will remove expired item '${key}'`);
         }
       }
     }
   },
   findOne(id) {
-    return _localStorage.getItem(this.getKey(id));
+    return _localStorage.getItem(this.getMainKey(id));
   },
   removeOne(id) {
-    _localStorage.removeItem(this.getKey(id));
+    _localStorage.removeItem(this.getMainKey(id));
     return this;
   },
   _saveOne(id, src, base64) {
-    _localStorage.setItem(this.getKey(id), JSON.stringify({
-      t: Date.now(),
+    _localStorage.setItem(this.getMainKey(id), JSON.stringify({
       src,
       base64
     }));
+    _localStorage.setItem(this.getExpireKey(id), Date.now());
   },
   saveOne(id, src) {
     // 利用空闲时间来存储

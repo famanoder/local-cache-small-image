@@ -29,15 +29,19 @@
 
   var MAX_SAVED_NUM = 30;
   var AFTER_7_DAYS = 7 * 24 * 60 * 60 * 1000;
-  var KEY_PREFIX = 'local_cached_img_key_';
+  var KEY_PREFIX = 'local_cached_img_key';
+  var EXPIRE_KEY = 'expire';
   var _localStorage = window.localStorage; // eslint-disable-line
 
   var localImgStore = {
     expireTime: AFTER_7_DAYS,
     keyPrefix: KEY_PREFIX,
     length: 0,
-    getKey: function getKey(id) {
-      return this.keyPrefix + id;
+    getMainKey: function getMainKey(id) {
+      return "".concat(this.keyPrefix, "_").concat(id, "$");
+    },
+    getExpireKey: function getExpireKey(id) {
+      return "".concat(this.getMainKey(id)).concat(EXPIRE_KEY);
     },
     isOurKey: function isOurKey(k) {
       return _localStorage.hasOwnProperty(k) && k.startsWith(this.keyPrefix);
@@ -51,41 +55,40 @@
         }
       }
 
-      return num;
+      return num / 2;
     },
     removeExpired: function removeExpired() {
       for (var k in _localStorage) {
-        if (this.isOurKey(k)) {
-          var item = {};
+        if (this.isOurKey(k) && k.endsWith(EXPIRE_KEY)) {
+          var expire = _localStorage[k];
 
-          try {
-            item = JSON.parse(_localStorage[k]);
-          } catch (e) {
-            console.error(e);
-          }
+          if (Date.now() - (expire || 0) >= this.expireTime) {
+            var key = k.replace(/\w+$/, '');
 
-          if (Date.now() - (item.t || 0) >= this.expireTime) {
             _localStorage.removeItem(k);
 
-            console.warn("will remove expired item '".concat(k, "'"));
+            _localStorage.removeItem(key);
+
+            console.warn("will remove expired item '".concat(key, "'"));
           }
         }
       }
     },
     findOne: function findOne(id) {
-      return _localStorage.getItem(this.getKey(id));
+      return _localStorage.getItem(this.getMainKey(id));
     },
     removeOne: function removeOne(id) {
-      _localStorage.removeItem(this.getKey(id));
+      _localStorage.removeItem(this.getMainKey(id));
 
       return this;
     },
     _saveOne: function _saveOne(id, src, base64) {
-      _localStorage.setItem(this.getKey(id), JSON.stringify({
-        t: Date.now(),
+      _localStorage.setItem(this.getMainKey(id), JSON.stringify({
         src: src,
         base64: base64
       }));
+
+      _localStorage.setItem(this.getExpireKey(id), Date.now());
     },
     saveOne: function saveOne(id, src) {
       var _this = this;
