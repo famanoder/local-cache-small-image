@@ -52,8 +52,4 @@ when you use `localImgResolver.resolve(id, src)`, it return a Promise, I try to 
 
 ### Plan
 
-* use a worker
-  
-* use task queue with requestIdleCallback
-
 * maybe IndexDB
