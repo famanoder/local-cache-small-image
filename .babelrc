@@ -1,0 +1,11 @@
+{
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": "last 2 versions, IE 10",
+        "modules": "umd"
+      }
+    ]
+  ]
+}

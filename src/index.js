@@ -4,6 +4,7 @@ const MAX_IMG_SIZE = 15 * 1024; // 15k
 const MAX_SAVED_NUM = 30;
 const AFTER_7_DAYS = 7 * 24 * 60 * 60 * 1000;
 const KEY_PREFIX = 'local_cached_img_key_';
+const _localStorage = window.localStorage; // eslint-disable-line
 
 const localImgStore = {
   expireTime: AFTER_7_DAYS, 
@@ -13,40 +14,42 @@ const localImgStore = {
     return this.keyPrefix + id;
   },
   isOurKey(k) {
-    return localStorage.hasOwnProperty(k) && k.startsWith(this.keyPrefix);
+    return _localStorage.hasOwnProperty(k) && k.startsWith(this.keyPrefix);
   },
   getStoredLength() {
     let num = 0;
-    for(let k in localStorage) {
-      if(this.isOurKey(k)) {
+    for (const k in _localStorage) {
+      if (this.isOurKey(k)) {
         num += 1;
       }
     }
     return num;
   },
   removeExpired() {
-    for(let k in localStorage) {
-      if(this.isOurKey(k)) {
+    for (const k in _localStorage) {
+      if (this.isOurKey(k)) {
         let item = {};
-        try{
-          item = JSON.parse(localStorage[k]);
-        }catch(e) {}
-        if(Date.now() - (item.t ||  0) >= this.expireTime) {
-          localStorage.removeItem(k);
+        try {
+          item = JSON.parse(_localStorage[k]);
+        } catch (e) {
+          console.error(e);
+        }
+        if (Date.now() - (item.t ||  0) >= this.expireTime) {
+          _localStorage.removeItem(k);
           console.warn(`will remove expired item '${k}'`);
         }
       }
     }
   },
   findOne(id) {
-    return localStorage.getItem(this.getKey(id));
+    return _localStorage.getItem(this.getKey(id));
   },
   removeOne(id) {
-    localStorage.removeItem(this.getKey(id));
+    _localStorage.removeItem(this.getKey(id));
     return this;
   },
   _saveOne(id, src, base64) {
-    localStorage.setItem(this.getKey(id), JSON.stringify({
+    _localStorage.setItem(this.getKey(id), JSON.stringify({
       t: Date.now(),
       src,
       base64
@@ -54,22 +57,22 @@ const localImgStore = {
   },
   saveOne(id, src) {
     // 利用空闲时间来存储
-    return new Promise((rs, rj) => {
-      if(this.getStoredLength() < MAX_SAVED_NUM) {
+    return new Promise(rs => {
+      if (this.getStoredLength() < MAX_SAVED_NUM) {
         fetchImgBlob(src)
         .then(base64 => {
-          if(base64) {
+          if (base64) {
             this._saveOne(id, src, base64);
             rs({
               id,
               src,
               base64
             });
-          }else{
+          } else {
             rs({});
           }
         });
-      }else{
+      } else {
         rs({});
       }
     });
@@ -78,13 +81,13 @@ const localImgStore = {
 
 function fetchImgBlob(src) {
   // 解决canvas图片跨域问题
-  return new Promise((rs, rj) => {
-    const xhr = new XMLHttpRequest();
+  return new Promise(rs => {
+    const xhr = new XMLHttpRequest(); // eslint-disable-line
     xhr.onload = function() {
-      if(this.response.size <= MAX_IMG_SIZE) {
+      if (this.response.size <= MAX_IMG_SIZE) {
         blobToBase64(this.response)
         .then(rs);
-      }else{
+      } else {
         rs(null);
       }
     }
@@ -98,22 +101,13 @@ function fetchImgBlob(src) {
 }
 
 function blobToBase64(blob) {
-  return new Promise((rs, rj) => {
-    const reader = new FileReader();
+  return new Promise(rs => {
+    const reader = new FileReader(); // eslint-disable-line
     reader.onload = function (e) {
       rs(e.target.result);
     }
     reader.readAsDataURL(blob);
   });
-}
-
-function supportWebp() {
-  let canvas = document.createElement('canvas');
-  canvas.width = 1;
-  canvas.height = 1;
-  const hasWebp = canvas.toDataURL('image/webp').startsWith('data:image/webp');
-  canvas = null;
-  return hasWebp;
 }
 
 localImgStore.removeExpired();
@@ -135,18 +129,18 @@ export default class LocalImgResolver {
     localImgStore.expireTime = this.expireTime;
   }
   match(id, src) {
-    if(this.matched[id]) {
+    if (this.matched[id]) {
       return this.matched[id];
     }
 
     let item = localImgStore.findOne(id);
-    if(item) {
-      try{
+    if (item) {
+      try {
         item = JSON.parse(item);
-      }catch(e) {
+      } catch (e) {
         item = {};
       }
-    }else{
+    } else {
       return {
         matched: false
       }
@@ -154,10 +148,10 @@ export default class LocalImgResolver {
     
     const matched = item.src === src;
 
-    if(matched) {
+    if (matched) {
       this.matched[id] = {matched, item};
       console.log('[hint cache]:', id);
-    }else{
+    } else {
       this.matched[id] = null;
       // src地址更新了，清除缓存，重新存储
       localImgStore.removeOne(id);
@@ -165,19 +159,19 @@ export default class LocalImgResolver {
     return {matched, item};
   }
   resolve(id, src) {
-    if(!window.FileReader) {
+    if (!window.FileReader) { // eslint-disable-line
       return Promise.resolve({id, src, base64: null});
     } 
 
     const {matched, item} = this.match(id, src);
-    if(matched) {
+    if (matched) {
       return Promise.resolve({
         id,
         src,
         base64: item.base64
       });
-    }else{
+    } else {
       return localImgStore.saveOne(id, src);
     }
   }
-};
+}

@@ -2,16 +2,32 @@
   "name": "local-cache-small-image",
   "version": "1.0.2",
   "description": "a way to manage browser local caches for small images.",
-  "main": "index.js",
+  "main": "dist",
+  "scripts": {
+    "lint": "eslint --ext .js src --fix",
+    "prebuild": "yarn lint",
+    "build": "babel src --out-dir dist --delete-on-start"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/famanoder/local-cache-small-image.git"
   },
-  "keywords": ["cache image", "local image"],
+  "keywords": [
+    "cache image",
+    "local image"
+  ],
   "author": "famanoder",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/famanoder/local-cache-small-image/issues"
   },
-  "homepage": "https://github.com/famanoder/local-cache-small-image#readme"
+  "homepage": "https://github.com/famanoder/local-cache-small-image#readme",
+  "devDependencies": {
+    "@babel/preset-env": "^7.5.5",
+    "babel-eslint": "^10.0.2",
+    "eslint": "^6.2.1"
+  },
+  "dependencies": {
+    "@babel/core": "^7.5.5"
+  }
 }
