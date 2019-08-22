@@ -57,24 +57,19 @@ const localImgStore = {
     _localStorage.setItem(this.getExpireKey(id), Date.now());
   },
   saveOne(id, src) {
-    // 利用空闲时间来存储
     return new Promise(rs => {
+      const res = {id, src};
       if (this.getStoredLength() < MAX_SAVED_NUM) {
         fetchImgBlob(src)
         .then(base64 => {
           if (base64) {
+            res.base64 = base64;
             this._saveOne(id, src, base64);
-            rs({
-              id,
-              src,
-              base64
-            });
-          } else {
-            rs({});
-          }
+          } 
+          rs(res);
         });
       } else {
-        rs({});
+        rs(res);
       }
     });
   }
