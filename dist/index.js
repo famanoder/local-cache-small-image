@@ -93,24 +93,24 @@
     saveOne: function saveOne(id, src) {
       var _this = this;
 
-      // 利用空闲时间来存储
       return new Promise(function (rs) {
+        var res = {
+          id: id,
+          src: src
+        };
+
         if (_this.getStoredLength() < MAX_SAVED_NUM) {
           fetchImgBlob(src).then(function (base64) {
             if (base64) {
-              _this._saveOne(id, src, base64);
+              res.base64 = base64;
 
-              rs({
-                id: id,
-                src: src,
-                base64: base64
-              });
-            } else {
-              rs({});
+              _this._saveOne(id, src, base64);
             }
+
+            rs(res);
           });
         } else {
-          rs({});
+          rs(res);
         }
       });
     }

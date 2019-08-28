@@ -1,4 +1,5 @@
 // 小型图片本地缓存方案
+import LRU from './lru';
 
 const MAX_IMG_SIZE = 15 * 1024; // 15k
 const MAX_SAVED_NUM = 30;
@@ -16,6 +17,15 @@ const localImgStore = {
   },
   getExpireKey(id) {
     return `${this.getMainKey(id)}${EXPIRE_KEY}`;
+  },
+  getLRUdataKey() {
+    return `${this.keyPrefix}_lru_data`;
+  },
+  getLRUdata() {
+    return _localStorage.getItem(this.getLRUdataKey()).split(',');
+  },
+  setLRUdata(data) {
+    _localStorage.setItem(this.getLRUdataKey(), data.join(','));
   },
   isOurKey(k) {
     return _localStorage.hasOwnProperty(k) && k.startsWith(this.keyPrefix);
@@ -47,6 +57,7 @@ const localImgStore = {
   },
   removeOne(id) {
     _localStorage.removeItem(this.getMainKey(id));
+    _localStorage.removeItem(this.getExpireKey(id));
     return this;
   },
   _saveOne(id, src, base64) {
@@ -113,16 +124,25 @@ export default class LocalImgResolver {
     maxSize,
     maxNum,
     expireTime,
-    keyPrefix
+    keyPrefix,
+    useLRU
   } = {}) {
     this.maxSize = maxSize || MAX_IMG_SIZE;
     this.maxNum = maxNum || MAX_SAVED_NUM;
     this.expireTime = expireTime || AFTER_7_DAYS;
     this.keyPrefix = keyPrefix || KEY_PREFIX;
+    this.useLRU = useLRU;
     this.matched = Object.create(null);
 
     localImgStore.keyPrefix = this.keyPrefix;
     localImgStore.expireTime = this.expireTime;
+
+    if(useLRU) {
+      this.lru = new LRU({
+        max: this.maxNum,
+        localData: localImgStore.getLRUdata()
+      });
+    }
   }
   match(id, src) {
     if (this.matched[id]) {
@@ -160,6 +180,8 @@ export default class LocalImgResolver {
     } 
 
     const {matched, item} = this.match(id, src);
+
+    this.withLRU(id, matched);
     if (matched) {
       return Promise.resolve({
         id,
@@ -168,6 +190,19 @@ export default class LocalImgResolver {
       });
     } else {
       return localImgStore.saveOne(id, src);
+    }
+  }
+  withLRU(id, matched) {
+    if(this.useLRU) {
+      if(matched) {
+        this.lru.update(id);
+      } else {
+        const rmId = this.lru.push(id);
+        if(rmId) {
+          localImgStore.removeOne(id);
+        }
+      }
+      localImgStore.setLRUdata(this.lru.data);
     }
   }
 }

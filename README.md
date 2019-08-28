@@ -22,6 +22,7 @@ npm i local-cache-small-image
   * maxNum: max number can be stored;
   * expireTime: how long stored;
   * keyPrefix: stored key prefix;
+  * useLRU: whether to use LRU algorithm;
 
 * **API**
 
@@ -37,6 +38,7 @@ const option = {
   // maxNum: 30,
   // expireTime: 7 * 24 * 60 * 60 * 1000,
   // keyPrefix: 'local_cached_img_key_'
+  // useLRU: false
 };
 const localImgResolver = new LocalImgResolver(option);
 let img;
@@ -49,6 +51,8 @@ localImgResolver
 ```
 
 when you use `localImgResolver.resolve(id, src)`, it return a Promise, I try to find a cached base64, if success, resolve it, or, use this src to download the image's blob and then save it as base64, and resolve it;
+
+there is a simple LRU algorithm supported for you if you have too many local imgs to manage;
 
 ### Plan
 
