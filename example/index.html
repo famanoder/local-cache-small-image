@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>test</title>
+</head>
+<body>
+  <img id="img" />
+  <img id="img_1" />
+  <script src="../dist/index.js"></script>
+  <script>
+    const imgURL = 'https://fuss10.elemecdn.com/3/63/4e7f3a15429bfda99bce42a18cdd1jpeg.jpeg';
+    const imgURL_1 = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png';
+    const localImgResolver = new LocalImgResolver({
+      maxSize: 50 * 1024,
+      useLRU: true
+    });
+
+    localImgResolver
+    .resolve('test', imgURL)
+    .then(({id, src, base64}) => {
+      const img = document.querySelector('#img');
+      img.src = base64;
+    });
+
+    localImgResolver
+    .resolve('test_1', imgURL_1)
+    .then(({id, src, base64}) => {
+      const img_1 = document.querySelector('#img_1');
+      img_1.src = base64;
+    });
+    localImgResolver.resolveAll([
+      {
+        id: 'test_3',
+        src: imgURL
+      },
+      {
+        id: 'test_4',
+        src: imgURL_1
+      }
+    ]).then(res => {
+      console.log(res);
+    });
+  </script>
+</body>
+</html>

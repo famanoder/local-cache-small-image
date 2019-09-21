@@ -1,19 +1,20 @@
 // 小型图片本地缓存方案
 import LRU from './lru';
 
-const MAX_IMG_SIZE = 15 * 1024; // 15k
+const MAX_IMG_SIZE = 20 * 1024; // 20k
 const MAX_SAVED_NUM = 30;
-const AFTER_7_DAYS = 7 * 24 * 60 * 60 * 1000;
+const EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000;
 const KEY_PREFIX = 'local_cached_img_key';
 const EXPIRE_KEY = 'expire';
+const KEY_ENDSWITH = '$';
 const _localStorage = window.localStorage; // eslint-disable-line
 
 const localImgStore = {
-  expireTime: AFTER_7_DAYS, 
+  expireTime: EXPIRE_TIME, 
   keyPrefix: KEY_PREFIX,
   length: 0,
   getMainKey(id) {
-    return `${this.keyPrefix}_${id}$`;
+    return `${this.keyPrefix}_${id + KEY_ENDSWITH}`;
   },
   getExpireKey(id) {
     return `${this.getMainKey(id)}${EXPIRE_KEY}`;
@@ -22,7 +23,17 @@ const localImgStore = {
     return `${this.keyPrefix}_lru_data`;
   },
   getLRUdata() {
-    return _localStorage.getItem(this.getLRUdataKey()).split(',');
+    const savedLRUdata = _localStorage.getItem(this.getLRUdataKey());
+    const lruData = [];
+    if (!savedLRUdata) {
+      for (const k in _localStorage) {
+        if (k.endsWith(KEY_ENDSWITH)) {
+          lruData.push(k.replace(`${KEY_PREFIX}_`, '').replace(new RegExp(`\\${KEY_ENDSWITH}$`), ''));
+        }
+      }
+      return lruData;
+    }
+    return savedLRUdata.split(',');
   },
   setLRUdata(data) {
     _localStorage.setItem(this.getLRUdataKey(), data.join(','));
@@ -37,7 +48,7 @@ const localImgStore = {
         num += 1;
       }
     }
-    return num / 2;
+    return (num - 1) / 2;
   },
   removeExpired() {
     for (const k in _localStorage) {
@@ -67,11 +78,11 @@ const localImgStore = {
     }));
     _localStorage.setItem(this.getExpireKey(id), Date.now());
   },
-  saveOne(id, src) {
+  saveOne(id, src, {maxSize, maxNum} = {}) {
     return new Promise(rs => {
       const res = {id, src};
-      if (this.getStoredLength() < MAX_SAVED_NUM) {
-        fetchImgBlob(src)
+      if (this.getStoredLength() < maxNum) {
+        fetchImgBlob(src, maxSize)
         .then(base64 => {
           if (base64) {
             res.base64 = base64;
@@ -86,12 +97,11 @@ const localImgStore = {
   }
 }
 
-function fetchImgBlob(src) {
-  // 解决canvas图片跨域问题
+function fetchImgBlob(src, maxSize) {
   return new Promise(rs => {
     const xhr = new XMLHttpRequest(); // eslint-disable-line
     xhr.onload = function() {
-      if (this.response.size <= MAX_IMG_SIZE) {
+      if (this.response.size <= maxSize) {
         blobToBase64(this.response)
         .then(rs);
       } else {
@@ -129,7 +139,7 @@ export default class LocalImgResolver {
   } = {}) {
     this.maxSize = maxSize || MAX_IMG_SIZE;
     this.maxNum = maxNum || MAX_SAVED_NUM;
-    this.expireTime = expireTime || AFTER_7_DAYS;
+    this.expireTime = expireTime || EXPIRE_TIME;
     this.keyPrefix = keyPrefix || KEY_PREFIX;
     this.useLRU = useLRU;
     this.matched = Object.create(null);
@@ -137,7 +147,7 @@ export default class LocalImgResolver {
     localImgStore.keyPrefix = this.keyPrefix;
     localImgStore.expireTime = this.expireTime;
 
-    if(useLRU) {
+    if (useLRU) {
       this.lru = new LRU({
         max: this.maxNum,
         localData: localImgStore.getLRUdata()
@@ -174,6 +184,14 @@ export default class LocalImgResolver {
     }
     return {matched, item};
   }
+  resolveAll(imgs) {
+    if (imgs) {
+      const imgPromises = imgs.map(({id, src}) => this.resolve(id, src));
+      return Promise.all(imgPromises);
+    } else {
+      return Promise.resolve([]);
+    }
+  }
   resolve(id, src) {
     if (!window.FileReader) { // eslint-disable-line
       return Promise.resolve({id, src, base64: null});
@@ -189,16 +207,20 @@ export default class LocalImgResolver {
         base64: item.base64
       });
     } else {
-      return localImgStore.saveOne(id, src);
+      const option = {
+        maxSize: this.maxSize, 
+        maxNum: this.maxNum
+      };
+      return localImgStore.saveOne(id, src, option);
     }
   }
   withLRU(id, matched) {
-    if(this.useLRU) {
-      if(matched) {
+    if (this.useLRU) {
+      if (matched) {
         this.lru.update(id);
       } else {
         const rmId = this.lru.push(id);
-        if(rmId) {
+        if (rmId) {
           localImgStore.removeOne(id);
         }
       }
