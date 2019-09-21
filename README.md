@@ -27,6 +27,7 @@ npm i local-cache-small-image
 * **API**
 
   * resolve: (id, src) => Promise
+  * resolveAll: [] => Promise
 
 * **Example**
 

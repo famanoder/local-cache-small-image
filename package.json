@@ -1,6 +1,6 @@
 {
   "name": "local-cache-small-image",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "a way to manage browser local caches for small images.",
   "main": "dist",
   "scripts": {
